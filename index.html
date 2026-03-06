@@ -1,170 +1,121 @@
-<!DOCTYPE html>
+  <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Ultimate 4K 3D City</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>3D City - Mobile Ready</title>
 <style>
-body { margin:0; overflow:hidden; background:black; font-family:Arial; }
-#title { position:absolute; top:20px; left:20px; color:white; font-size:26px; z-index:10; }
-#instructions {
-position:absolute; top:60px; left:20px; color:white; font-size:16px; z-index:10;
-}
+body { margin:0; overflow:hidden; background:black; font-family:Arial; touch-action:none; }
+#ui { position:absolute; top:20px; left:20px; color:white; z-index:10; pointer-events:none; }
+#controls-wrapper { position:absolute; bottom:30px; left:50%; transform:translateX(-50%); display:grid; grid-template-columns: repeat(3, 60px); gap:10px; z-index:20; }
+.btn { width:60px; height:60px; background:rgba(255,255,255,0.2); border:2px solid white; border-radius:10px; color:white; display:flex; align-items:center; justify-content:center; font-weight:bold; pointer-events:auto; -webkit-user-select:none; }
+.btn:active { background:rgba(255,255,255,0.5); }
+#btn-forward { grid-column: 2; }
+#btn-left { grid-column: 1; }
+#btn-right { grid-column: 3; }
+#btn-back { grid-column: 2; }
 </style>
 </head>
 <body>
-<div id="title">Ultimate 4K 3D City</div>
-<div id="instructions">Click to start, use WASD + Mouse to move</div>
+<div id="ui">
+    <div style="font-size:20px;">3D Night City</div>
+    <div style="font-size:12px;">Touch buttons to move | Drag to look around</div>
+</div>
+
+<div id="controls-wrapper">
+    <div id="btn-forward" class="btn">↑</div>
+    <div id="btn-left" class="btn">←</div>
+    <div id="btn-right" class="btn">→</div>
+    <div id="btn-back" class="btn">↓</div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
 
 <script>
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x000010);
-
-// Camera
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 5000);
-camera.position.set(0,50,200);
-
-// Renderer
+scene.background = new THREE.Color(0x000005);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({antialias:true});
-renderer.setPixelRatio(Math.min(window.devicePixelRatio,2)); // 4K
-renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio > 1 ? 1.5 : 1);
 document.body.appendChild(renderer.domElement);
 
-// Controls FPS
-const controls = new THREE.PointerLockControls(camera, document.body);
-document.addEventListener('click', () => { controls.lock(); }, false);
-
 // Lights
-const moon = new THREE.DirectionalLight(0xddddff,1.2);
-moon.position.set(300,500,300);
-scene.add(moon);
-const ambient = new THREE.AmbientLight(0x404040,0.5);
+const ambient = new THREE.AmbientLight(0x404040, 0.8);
 scene.add(ambient);
+const light = new THREE.PointLight(0xffffff, 1, 500);
+light.position.set(0, 100, 0);
+scene.add(light);
+
+// City Creation
+const bGeo = new THREE.BoxGeometry(1, 1, 1);
+for(let i=0; i<200; i++) {
+    const h = Math.random() * 30 + 5;
+    const mat = new THREE.MeshStandardMaterial({color: 0x222222, emissive: Math.random() > 0.5 ? 0x0000ff : 0xff0000, emissiveIntensity: 0.2});
+    const b = new THREE.Mesh(bGeo, mat);
+    b.scale.set(10, h, 10);
+    b.position.set(Math.random()*400-200, h/2, Math.random()*400-200);
+    scene.add(b);
+}
 
 // Ground
-const groundGeo = new THREE.PlaneGeometry(2000,2000);
-const groundMat = new THREE.MeshStandardMaterial({color:0x111111});
-const ground = new THREE.Mesh(groundGeo, groundMat);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(1000,1000), new THREE.MeshStandardMaterial({color:0x111111}));
 ground.rotation.x = -Math.PI/2;
 scene.add(ground);
 
-// Buildings
-function createBuilding(x,z,height,color){
-  const geo = new THREE.BoxGeometry(20,height,20);
-  const mat = new THREE.MeshStandardMaterial({color:color, emissive:0x1111ff, emissiveIntensity:0.5});
-  const b = new THREE.Mesh(geo, mat);
-  b.position.set(x,height/2,z);
-  scene.add(b);
-}
-for(let i=-400;i<=400;i+=25){
-  for(let j=-400;j<=400;j+=25){
-    if(Math.random()>0.3){
-      const h = Math.random()*120+20;
-      const c = 0x222222 + Math.random()*0x444444;
-      createBuilding(i,j,h,c);
-    }
-  }
-}
+camera.position.set(0, 5, 50);
 
-// Roads
-for(let i=-400;i<=400;i+=50){
-  const roadGeo = new THREE.BoxGeometry(2000,0.2,10);
-  const roadMat = new THREE.MeshStandardMaterial({color:0x222222});
-  const road = new THREE.Mesh(roadGeo,roadMat);
-  road.position.z = i;
-  road.position.y = 0.1;
-  scene.add(road);
-  const road2 = new THREE.Mesh(roadGeo,roadMat);
-  road2.rotation.y=Math.PI/2;
-  road2.position.x = i;
-  road2.position.y = 0.1;
-  scene.add(road2);
-}
+// Touch movement variables
+let move = { f:0, b:0, l:0, r:0 };
+const setupBtn = (id, key) => {
+    const el = document.getElementById(id);
+    el.ontouchstart = (e) => { e.preventDefault(); move[key] = 1; };
+    el.ontouchend = (e) => { e.preventDefault(); move[key] = 0; };
+};
+setupBtn('btn-forward', 'f'); setupBtn('btn-back', 'b'); setupBtn('btn-left', 'l'); setupBtn('btn-right', 'r');
 
-// Cars
-const carGeo = new THREE.BoxGeometry(6,3,12);
-const carMat = new THREE.MeshStandardMaterial({color:0xff0000});
-const cars=[];
-for(let i=0;i<20;i++){
-  const car = new THREE.Mesh(carGeo, carMat);
-  car.position.set(Math.random()*800-400,1.5,Math.random()*800-400);
-  scene.add(car);
-  cars.push(car);
-}
+// Drag to look around
+let lat = 0, lon = 0, onMouseDownLon = 0, onMouseDownLat = 0, onMouseDownMouseX = 0, onMouseDownMouseY = 0;
+document.addEventListener('touchstart', (e) => {
+    onMouseDownMouseX = e.touches[0].pageX; onMouseDownMouseY = e.touches[0].pageY;
+    onMouseDownLon = lon; onMouseDownLat = lat;
+});
+document.addEventListener('touchmove', (e) => {
+    lon = (onMouseDownMouseX - e.touches[0].pageX) * 0.1 + onMouseDownLon;
+    lat = (e.touches[0].pageY - onMouseDownMouseY) * 0.1 + onMouseDownLat;
+    lat = Math.max(-85, Math.min(85, lat));
+});
 
-// Stars
-const starsGeo = new THREE.BufferGeometry();
-const starVerts = [];
-for(let i=0;i<3000;i++){
-  starVerts.push(Math.random()*2000-1000,Math.random()*500+200,Math.random()*2000-1000);
-}
-starsGeo.setAttribute('position',new THREE.Float32BufferAttribute(starVerts,3));
-const starsMat = new THREE.PointsMaterial({color:0xffffff});
-scene.add(new THREE.Points(starsGeo, starsMat));
+function animate() {
+    requestAnimationFrame(animate);
+    
+    // Rotation logic
+    const phi = THREE.MathUtils.degToRad(90 - lat);
+    const theta = THREE.MathUtils.degToRad(lon);
+    const target = new THREE.Vector3();
+    target.setFromSphericalCoords(1, phi, theta).add(camera.position);
+    camera.lookAt(target);
 
-// Rain
-const rainGeo = new THREE.BufferGeometry();
-const rainCount=2000;
-const rainVerts=[];
-for(let i=0;i<rainCount;i++){
-  rainVerts.push(Math.random()*2000-1000,Math.random()*500,Math.random()*2000-1000);
-}
-rainGeo.setAttribute('position', new THREE.Float32BufferAttribute(rainVerts,3));
-const rainMat = new THREE.PointsMaterial({color:0xaaaaff, size:1});
-const rain = new THREE.Points(rainGeo,rainMat);
-scene.add(rain);
+    // Movement logic
+    const speed = 0.5;
+    const forward = new THREE.Vector3();
+    camera.getWorldDirection(forward); forward.y = 0; forward.normalize();
+    const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0,1,0)).normalize();
 
-// Movement
-const move = {forward:false,back:false,left:false,right:false};
-document.addEventListener('keydown', e=>{if(e.code==='KeyW') move.forward=true; if(e.code==='KeyS') move.back=true; if(e.code==='KeyA') move.left=true; if(e.code==='KeyD') move.right=true;});
-document.addEventListener('keyup', e=>{if(e.code==='KeyW') move.forward=false; if(e.code==='KeyS') move.back=false; if(e.code==='KeyA') move.left=false; if(e.code==='KeyD') move.right=false;});
+    if(move.f) camera.position.addScaledVector(forward, speed);
+    if(move.b) camera.position.addScaledVector(forward, -speed);
+    if(move.l) camera.position.addScaledVector(right, -speed);
+    if(move.r) camera.position.addScaledVector(right, speed);
 
-// Animate
-function animate(){
-  requestAnimationFrame(animate);
-
-  // Car movement
-  cars.forEach(c=>{
-    c.position.x += Math.sin(Date.now()*0.001)*0.3;
-    c.position.z += Math.cos(Date.now()*0.001)*0.3;
-    if(c.position.x>1000) c.position.x=-1000;
-    if(c.position.z>1000) c.position.z=-1000;
-  });
-
-  // Rain
-  rain.geometry.attributes.position.array.forEach((v,i)=>{
-    if(i%3===1){
-      rain.geometry.attributes.position.array[i]-=2;
-      if(rain.geometry.attributes.position.array[i]<0) rain.geometry.attributes.position.array[i]=500;
-    }
-  });
-  rain.geometry.attributes.position.needsUpdate=true;
-
-  // FPS movement
-  const speed = 2;
-  if(controls.isLocked){
-    const dir = new THREE.Vector3();
-    camera.getWorldDirection(dir);
-    if(move.forward) controls.moveForward(speed);
-    if(move.back) controls.moveForward(-speed);
-    if(move.left) controls.moveRight(-speed);
-    if(move.right) controls.moveRight(speed);
-  }
-
-  controls.update();
-  renderer.render(scene,camera);
+    renderer.render(scene, camera);
 }
 animate();
 
-// Resize
-window.addEventListener("resize",()=>{
-  camera.aspect = window.innerWidth/window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth,window.innerHeight);
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
 });
-
 </script>
 </body>
 </html>
