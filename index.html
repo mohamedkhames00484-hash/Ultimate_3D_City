@@ -1,15 +1,15 @@
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>3D City - Mobile Ready</title>
+<title>Realistic 3D Night City - Mobile</title>
 <style>
-body { margin:0; overflow:hidden; background:black; font-family:Arial; touch-action:none; }
-#ui { position:absolute; top:20px; left:20px; color:white; z-index:10; pointer-events:none; }
-#controls-wrapper { position:absolute; bottom:30px; left:50%; transform:translateX(-50%); display:grid; grid-template-columns: repeat(3, 60px); gap:10px; z-index:20; }
-.btn { width:60px; height:60px; background:rgba(255,255,255,0.2); border:2px solid white; border-radius:10px; color:white; display:flex; align-items:center; justify-content:center; font-weight:bold; pointer-events:auto; -webkit-user-select:none; }
-.btn:active { background:rgba(255,255,255,0.5); }
+body { margin:0; overflow:hidden; background:#000; font-family:Arial; touch-action:none; }
+#ui { position:absolute; top:20px; left:20px; color:white; z-index:10; pointer-events:none; text-shadow: 2px 2px 4px #000; }
+#controls-wrapper { position:absolute; bottom:30px; left:50%; transform:translateX(-50%); display:grid; grid-template-columns: repeat(3, 65px); gap:10px; z-index:20; }
+.btn { width:65px; height:65px; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.4); border-radius:50%; color:white; display:flex; align-items:center; justify-content:center; font-size:24px; pointer-events:auto; -webkit-user-select:none; }
+.btn:active { background:rgba(255,255,255,0.3); }
 #btn-forward { grid-column: 2; }
 #btn-left { grid-column: 1; }
 #btn-right { grid-column: 3; }
@@ -18,8 +18,8 @@ body { margin:0; overflow:hidden; background:black; font-family:Arial; touch-act
 </head>
 <body>
 <div id="ui">
-    <div style="font-size:20px;">3D Night City</div>
-    <div style="font-size:12px;">Touch buttons to move | Drag to look around</div>
+    <div style="font-size:22px; font-weight:bold;">Realistic Night City</div>
+    <div style="font-size:13px; color:#aaa;">Rainy Night | Mobile Controls</div>
 </div>
 
 <div id="controls-wrapper">
@@ -33,71 +33,122 @@ body { margin:0; overflow:hidden; background:black; font-family:Arial; touch-act
 
 <script>
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x000005);
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+scene.background = new THREE.Color(0x020205);
+scene.fog = new THREE.FogExp2(0x020205, 0.002);
+
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 2000);
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio > 1 ? 1.5 : 1);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 document.body.appendChild(renderer.domElement);
 
 // Lights
-const ambient = new THREE.AmbientLight(0x404040, 0.8);
+const ambient = new THREE.AmbientLight(0x404040, 0.5);
 scene.add(ambient);
-const light = new THREE.PointLight(0xffffff, 1, 500);
-light.position.set(0, 100, 0);
-scene.add(light);
+const moonLight = new THREE.DirectionalLight(0x5555ff, 0.8);
+moonLight.position.set(100, 200, 100);
+scene.add(moonLight);
 
-// City Creation
-const bGeo = new THREE.BoxGeometry(1, 1, 1);
-for(let i=0; i<200; i++) {
-    const h = Math.random() * 30 + 5;
-    const mat = new THREE.MeshStandardMaterial({color: 0x222222, emissive: Math.random() > 0.5 ? 0x0000ff : 0xff0000, emissiveIntensity: 0.2});
-    const b = new THREE.Mesh(bGeo, mat);
-    b.scale.set(10, h, 10);
-    b.position.set(Math.random()*400-200, h/2, Math.random()*400-200);
+// Realistic Buildings with Windows
+function createBuilding(x, z) {
+    const h = Math.random() * 60 + 20;
+    const w = 15;
+    const geo = new THREE.BoxGeometry(w, h, w);
+    const mat = new THREE.MeshStandardMaterial({
+        color: 0x111111,
+        roughness: 0.1,
+        metalness: 0.5
+    });
+    const b = new THREE.Mesh(geo, mat);
+    b.position.set(x, h/2, z);
     scene.add(b);
+
+    // Window Lights
+    const winGeo = new THREE.PlaneGeometry(w + 0.1, h * 0.8);
+    const winMat = new THREE.MeshBasicMaterial({
+        color: 0xffff00,
+        transparent: true,
+        opacity: 0.1,
+        side: THREE.DoubleSide
+    });
+    const win = new THREE.Mesh(winGeo, winMat);
+    win.position.set(x, h/2, z + w/2 + 0.05);
+    scene.add(win);
 }
 
-// Ground
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(1000,1000), new THREE.MeshStandardMaterial({color:0x111111}));
+for(let i=-300; i<300; i+=40) {
+    for(let j=-300; j<300; j+=40) {
+        if(Math.random() > 0.4) createBuilding(i, j);
+    }
+}
+
+// Ground (Roads)
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), new THREE.MeshStandardMaterial({color: 0x050505}));
 ground.rotation.x = -Math.PI/2;
 scene.add(ground);
 
-camera.position.set(0, 5, 50);
+// Rain
+const rainCount = 1500;
+const rainGeo = new THREE.BufferGeometry();
+const rainPos = new Float32Array(rainCount * 3);
+for(let i=0; i<rainCount*3; i+=3) {
+    rainPos[i] = Math.random()*600-300;
+    rainPos[i+1] = Math.random()*400;
+    rainPos[i+2] = Math.random()*600-300;
+}
+rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
+const rainMat = new THREE.PointsMaterial({color: 0xaaaaaa, size: 0.5, transparent: true});
+const rain = new THREE.Points(rainGeo, rainMat);
+scene.add(rain);
 
-// Touch movement variables
+// Cars (Moving Lights)
+const cars = [];
+function createCar() {
+    const car = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 4), new THREE.MeshStandardMaterial({color: 0x111111}));
+    const light = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.5, 0.1), new THREE.MeshBasicMaterial({color: 0xff0000}));
+    light.position.z = -2;
+    car.add(body, light);
+    car.position.set(Math.random()*400-200, 0.5, Math.random()*400-200);
+    scene.add(car);
+    cars.push({obj: car, speed: Math.random() * 0.5 + 0.2});
+}
+for(let i=0; i<15; i++) createCar();
+
+camera.position.set(0, 5, 100);
+
+// Controls Logic
 let move = { f:0, b:0, l:0, r:0 };
-const setupBtn = (id, key) => {
+const setupBtn = (id, k) => {
     const el = document.getElementById(id);
-    el.ontouchstart = (e) => { e.preventDefault(); move[key] = 1; };
-    el.ontouchend = (e) => { e.preventDefault(); move[key] = 0; };
+    el.ontouchstart = (e) => { e.preventDefault(); move[k]=1; };
+    el.ontouchend = (e) => { e.preventDefault(); move[k]=0; };
 };
-setupBtn('btn-forward', 'f'); setupBtn('btn-back', 'b'); setupBtn('btn-left', 'l'); setupBtn('btn-right', 'r');
+setupBtn('btn-forward','f'); setupBtn('btn-back','b'); setupBtn('btn-left','l'); setupBtn('btn-right','r');
 
-// Drag to look around
-let lat = 0, lon = 0, onMouseDownLon = 0, onMouseDownLat = 0, onMouseDownMouseX = 0, onMouseDownMouseY = 0;
+let lat = 0, lon = 0, startX = 0, startY = 0, startLon = 0, startLat = 0;
 document.addEventListener('touchstart', (e) => {
-    onMouseDownMouseX = e.touches[0].pageX; onMouseDownMouseY = e.touches[0].pageY;
-    onMouseDownLon = lon; onMouseDownLat = lat;
+    startX = e.touches[0].pageX; startY = e.touches[0].pageY;
+    startLon = lon; startLat = lat;
 });
 document.addEventListener('touchmove', (e) => {
-    lon = (onMouseDownMouseX - e.touches[0].pageX) * 0.1 + onMouseDownLon;
-    lat = (e.touches[0].pageY - onMouseDownMouseY) * 0.1 + onMouseDownLat;
+    lon = (startX - e.touches[0].pageX) * 0.15 + startLon;
+    lat = (e.touches[0].pageY - startY) * 0.15 + startLat;
     lat = Math.max(-85, Math.min(85, lat));
 });
 
 function animate() {
     requestAnimationFrame(animate);
     
-    // Rotation logic
+    // Camera Rotation
     const phi = THREE.MathUtils.degToRad(90 - lat);
     const theta = THREE.MathUtils.degToRad(lon);
     const target = new THREE.Vector3();
     target.setFromSphericalCoords(1, phi, theta).add(camera.position);
     camera.lookAt(target);
 
-    // Movement logic
-    const speed = 0.5;
+    // Movement
+    const speed = 0.6;
     const forward = new THREE.Vector3();
     camera.getWorldDirection(forward); forward.y = 0; forward.normalize();
     const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0,1,0)).normalize();
@@ -106,6 +157,20 @@ function animate() {
     if(move.b) camera.position.addScaledVector(forward, -speed);
     if(move.l) camera.position.addScaledVector(right, -speed);
     if(move.r) camera.position.addScaledVector(right, speed);
+
+    // Rain Animation
+    const positions = rain.geometry.attributes.position.array;
+    for(let i=1; i<positions.length; i+=3) {
+        positions[i] -= 3;
+        if(positions[i] < 0) positions[i] = 400;
+    }
+    rain.geometry.attributes.position.needsUpdate = true;
+
+    // Cars Animation
+    cars.forEach(c => {
+        c.obj.translateZ(c.speed);
+        if(c.obj.position.z > 300) c.obj.position.z = -300;
+    });
 
     renderer.render(scene, camera);
 }
